@@ -23,10 +23,15 @@
     justify-content: center;
     text-align: center;
   }
+
+  #app {
+    width: 100%;
+    max-width: 900px
+  }
 </style>
 
 <template>
-  <div>
+  <div id="app">
     <router-view></router-view>
   </div>
 </template>

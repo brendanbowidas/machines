@@ -7,3 +7,7 @@ export const fetchMachines = ({ commit }) => {
     commit(types.FETCH_MACHINES, machines)
   })
 }
+
+export const updateMachineState = ({ commit }, payload) => commit(types.UPDATE_MACHINE_STATE, payload)
+
+export const updateMachineIp = ({ commit }, payload) => commit(types.UPDATE_MACHINE_IP, payload)

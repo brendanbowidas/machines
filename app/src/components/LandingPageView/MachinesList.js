@@ -1,6 +1,5 @@
 import MachineCard from './MachineCard.vue'
-import { Row } from 'element-ui'
-console.log(Row);
+
 export default {
   name: 'MachinesList',
   functional: true,

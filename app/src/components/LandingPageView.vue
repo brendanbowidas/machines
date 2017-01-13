@@ -1,10 +1,6 @@
 <template>
   <div>
-    <h1>Welcome.</h1>
-    <Row>
-      <machines-list :machines="machines"></machines-list>
-    </Row>
-
+    <machines-list :machines="machines"></machines-list>
   </div>
 </template>
 
