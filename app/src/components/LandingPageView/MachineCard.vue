@@ -14,8 +14,8 @@
             </li>
           </ul>
           <Button @click="buttonAction(machine.name)" v-if="localMachine"
-           class="machine-card__button" :type="buttonType" :loading="this.running">{{buttonText}}</Button>
-           <Button @click="regenerateCerts(machine.name)">Regenerate Certs</Button>
+           class="machine-card__button" :type="buttonType" :disabled="regeneratingCerts" :loading="running">{{buttonText}}</Button>
+           <Button :loading="regeneratingCerts" @click="regenerateCerts(machine.name)" :disabled="running">Regenerate Certs</Button>
     </Card>
 </div>
 
@@ -34,6 +34,7 @@ import cp from 'child_process'
     data() {
       return {
         running: false,
+        regeneratingCerts: false,
       }
     },
     computed: {
@@ -115,14 +116,29 @@ import cp from 'child_process'
         })
       },
       regenerateCerts(machineName) {
-        cp.exec(`docker-machine regenerate-certs ${machineName}`, (err, stdout, stderr) => {
-          console.log('run');
-          if (err) {
-            this.setError(err)
-            return false
+        this.regeneratingCerts = true
+        const command = cp.spawn('docker-machine', ['regenerate-certs', machineName])
+        let stdout = ''
+
+        command.stdout.setEncoding('utf8')
+        
+        command.stdout.on('data', data => {
+          console.log(data);
+          stdout += data
+          command.stdin.write('y\n')
+          stdout = ''
+        })
+
+        command.stdout.on('error', err => this.setError(err))
+
+
+        command.on('exit', code => {
+          if (code !== 0) {
+            this.setError('Something went wrong regenerating certs')
+            this.regeneratingCerts = false
+            process.exit(1)
           }
-          console.log(stdout)
-          console.log(stderr)
+          this.regeneratingCerts = false
         })
       },
       ...mapActions([
