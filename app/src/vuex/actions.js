@@ -11,3 +11,5 @@ export const fetchMachines = ({ commit }) => {
 export const updateMachineState = ({ commit }, payload) => commit(types.UPDATE_MACHINE_STATE, payload)
 
 export const updateMachineIp = ({ commit }, payload) => commit(types.UPDATE_MACHINE_IP, payload)
+
+export const setError = ({ commit }, error) => commit(types.SET_ERROR, error)

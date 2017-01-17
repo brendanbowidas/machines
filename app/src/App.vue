@@ -26,7 +26,8 @@
 
   #app {
     width: 100%;
-    max-width: 900px
+    max-width: 900px;
+    padding-top: 20%;
   }
 </style>
 

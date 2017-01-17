@@ -5,7 +5,8 @@ import * as getters from './getters'
 import mutations from './mutations'
 
 const state = {
-  machines: []
+  machines: [],
+  error: null,
 }
 
 Vue.use(Vuex)

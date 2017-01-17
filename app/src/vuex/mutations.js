@@ -13,5 +13,8 @@ export default {
   [types.UPDATE_MACHINE_IP] (state, { ip, machineName }) {
     const machineToUpdate = findMachine(state, machineName)
     machineToUpdate.driver.ipAddress = ip
+  },
+  [types.SET_ERROR] (state, error) {
+    state.error = error
   }
 }

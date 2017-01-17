@@ -15,6 +15,7 @@
           </ul>
           <Button @click="buttonAction(machine.name)" v-if="localMachine"
            class="machine-card__button" :type="buttonType" :loading="this.running">{{buttonText}}</Button>
+           <Button @click="regenerateCerts(machine.name)">Regenerate Certs</Button>
     </Card>
 </div>
 
@@ -25,6 +26,8 @@
 import { Card, Button } from 'element-ui'
 import Machine from 'docker-machine'
 import { mapActions } from 'vuex'
+import cp from 'child_process'
+
   export default {
     props: ['machine'],
     components: { Card, Button },
@@ -64,18 +67,18 @@ import { mapActions } from 'vuex'
         const machine = new Machine(machineName)
         machine.start(err => {
           if (err) {
-            console.log(err)
+            this.setError(err)
             return false
           }
           machine.isRunning((err, running) => {
             if (err) {
-              console.log(err)
+              this.setError(err)
               return false
             }
             if (running) {
               machine.env({ parse: true }, (err, result) => {
                 if (err) {
-                  console.log(err)
+                  this.setError(err)
                   return false
                 }
                 const ip = result.DOCKER_HOST.replace('tcp://', '').split(':')[0]
@@ -94,12 +97,12 @@ import { mapActions } from 'vuex'
         const machine = new Machine(machineName)
         machine.stop(err => {
           if (err) {
-            console.log(err)
+            this.setError(err)
             return false
           }
           machine.isRunning((err, running) => {
             if (err) {
-              console.log(err)
+              this.setError(err)
               return false
             }
             if (!running) {
@@ -111,10 +114,22 @@ import { mapActions } from 'vuex'
           })
         })
       },
+      regenerateCerts(machineName) {
+        cp.exec(`docker-machine regenerate-certs ${machineName}`, (err, stdout, stderr) => {
+          console.log('run');
+          if (err) {
+            this.setError(err)
+            return false
+          }
+          console.log(stdout)
+          console.log(stderr)
+        })
+      },
       ...mapActions([
         'fetchMachines',
         'updateMachineState',
         'updateMachineIp',
+        'setError',
       ])
     }
   }
