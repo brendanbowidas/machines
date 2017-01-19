@@ -140,7 +140,9 @@ import Console from './Console'
         command.stdout.setEncoding('utf8')
 
         command.stdout.on('data', data => {
-          this.output = this.output.replace('null', '')
+          if (this.output) {
+            this.output = this.output.replace('null', '')
+          }
           this.output += '> ' + data.replace('\n', '<br/>')
           command.stdin.write('y\n')
         })
