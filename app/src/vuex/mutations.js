@@ -16,5 +16,5 @@ export default {
   },
   [types.SET_ERROR] (state, error) {
     state.error = error
-  }
+  },
 }

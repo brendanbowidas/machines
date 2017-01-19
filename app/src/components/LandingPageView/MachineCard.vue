@@ -13,9 +13,11 @@
               <span class="bold">Host:</span> {{machine.driver.ipAddress}}
             </li>
           </ul>
+          <!--<div v-html="this.output"></div> -->
+          <Console :output="totalOutput"></Console>
           <Button @click="buttonAction(machine.name)" v-if="localMachine"
            class="machine-card__button" :type="buttonType" :disabled="regeneratingCerts" :loading="running">{{buttonText}}</Button>
-           <Button :loading="regeneratingCerts" @click="regenerateCerts(machine.name)" :disabled="running">Regenerate Certs</Button>
+           <Button v-if="localMachine" :loading="regeneratingCerts" @click="regenerateCerts(machine.name)" :disabled="running || machine.state !== 'running'">Regenerate Certs</Button>
     </Card>
 </div>
 
@@ -27,14 +29,16 @@ import { Card, Button } from 'element-ui'
 import Machine from 'docker-machine'
 import { mapActions } from 'vuex'
 import cp from 'child_process'
+import Console from './Console'
 
   export default {
     props: ['machine'],
-    components: { Card, Button },
+    components: { Card, Button, Console },
     data() {
       return {
         running: false,
         regeneratingCerts: false,
+        output: '',
       }
     },
     computed: {
@@ -60,6 +64,14 @@ import cp from 'child_process'
         if (this.machine.state === 'running') {
           return machine => this.stopMachine(machine)
         }
+      },
+      topBarHTML() {
+        return "<div class='top-bar'><ul class='circles'><li class='circle red'></li><li class='circle yellow'></li><li class='circle green'></li></ul>"
+      },
+      totalOutput() {
+        if (this.output) {
+          return this.output + this.topBarHTML
+        } return null
       }
     },
     methods: {
@@ -69,23 +81,29 @@ import cp from 'child_process'
         machine.start(err => {
           if (err) {
             this.setError(err)
-            return false
+
           }
           machine.isRunning((err, running) => {
             if (err) {
               this.setError(err)
-              return false
+
             }
             if (running) {
               machine.env({ parse: true }, (err, result) => {
                 if (err) {
                   this.setError(err)
-                  return false
+
                 }
                 const ip = result.DOCKER_HOST.replace('tcp://', '').split(':')[0]
+                const oldIp = localStorage.getItem(machineName)
+
+                localStorage.setItem(machineName, ip)
                 this.updateMachineIp({ ip, machineName })
                 this.updateMachineState({ machineState: 'running', machineName })
                 this.running = false
+                if (oldIp && ip !== oldIp) {
+                  this.regenerateCerts(machineName)
+                }
                 return true
               })
 
@@ -118,15 +136,13 @@ import cp from 'child_process'
       regenerateCerts(machineName) {
         this.regeneratingCerts = true
         const command = cp.spawn('docker-machine', ['regenerate-certs', machineName])
-        let stdout = ''
 
         command.stdout.setEncoding('utf8')
-        
+
         command.stdout.on('data', data => {
-          console.log(data);
-          stdout += data
+          this.output = this.output.replace('null', '')
+          this.output += '> ' + data.replace('\n', '<br/>')
           command.stdin.write('y\n')
-          stdout = ''
         })
 
         command.stdout.on('error', err => this.setError(err))
@@ -138,8 +154,14 @@ import cp from 'child_process'
             this.regeneratingCerts = false
             process.exit(1)
           }
+          this.fetchMachines()
+          this.output += 'done!'
+          setTimeout(this.clearOutput, 2000)
           this.regeneratingCerts = false
         })
+      },
+      clearOutput() {
+        this.output = null
       },
       ...mapActions([
         'fetchMachines',
@@ -166,9 +188,11 @@ import cp from 'child_process'
   .machine-card__info--item {
     padding: 5px;
   }
+
   .bold {
     font-weight: bold;
   }
+
   .machine-card__button {
     width: 20%;
   }
