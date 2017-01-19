@@ -13,7 +13,6 @@
               <span class="bold">Host:</span> {{machine.driver.ipAddress}}
             </li>
           </ul>
-          <!--<div v-html="this.output"></div> -->
           <Console :output="totalOutput"></Console>
           <Button @click="buttonAction(machine.name)" v-if="localMachine"
            class="machine-card__button" :type="buttonType" :disabled="regeneratingCerts" :loading="running">{{buttonText}}</Button>
@@ -65,6 +64,7 @@ import Console from './Console'
           return machine => this.stopMachine(machine)
         }
       },
+      //I know, I know... blame the v-html directive
       topBarHTML() {
         return "<div class='top-bar'><ul class='circles'><li class='circle red'></li><li class='circle yellow'></li><li class='circle green'></li></ul>"
       },
@@ -81,18 +81,10 @@ import Console from './Console'
         const command = cp.spawn('docker-machine', ['start', machineName])
         command.stdout.setEncoding('utf8')
 
-        command.stdout.on('data', data => {
-          if (this.output) {
-            this.output = this.output.replace('null', '')
-          }
-          this.output += '> ' + data.replace('\n', '<br/>')
-        })
+        this.handleCpOutput(command)
 
-        command.stdout.on('error', err => {
-          this.setError(err)
-          this.running = false
-          this.output = null
-        })
+
+        this.handleCpError(command, this.running)
 
         command.on('exit', code => {
           if (code !== 0) {
@@ -162,17 +154,10 @@ import Console from './Console'
 
         command.stdout.setEncoding('utf8')
 
-        command.stdout.on('data', data => {
-          if (this.output) {
-            this.output = this.output.replace('null', '')
-          }
-          this.output += '> ' + data.replace('\n', '<br/>')
-          command.stdin.write('y\n')
-        })
+        this.handleCpOutput(command)
 
-        command.stdout.on('error', err => this.setError(err))
-
-
+        this.handleCpError(command, this.regeneratingCerts)
+        
         command.on('exit', code => {
           if (code !== 0) {
             this.setError('Something went wrong regenerating certs')
@@ -183,6 +168,24 @@ import Console from './Console'
           setTimeout(this.clearOutput, 2000)
           this.regeneratingCerts = false
           this.fetchMachines()
+        })
+      },
+      handleCpOutput(cp) {
+        cp.stdout.on('data', data => {
+          if (this.output) {
+            this.output = this.output.replace('null', '')
+          }
+          this.output += '> ' + data.replace('\n', '<br/>')
+          cp.stdin.write('y\n')
+        })
+
+        cp.stdout.on('error', err => this.setError(err))
+      },
+      handleCpError(cp, loadingAttribute) {
+        cp.stdout.on('error', err => {
+          this.setError(err)
+          loadingAttribute = false
+          this.output = null
         })
       },
       clearOutput() {
