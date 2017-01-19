@@ -79,10 +79,8 @@ import Console from './Console'
         this.running = true
         const machine = new Machine(machineName)
         const command = cp.spawn('docker-machine', ['start', machineName])
-        command.stdout.setEncoding('utf8')
 
         this.handleCpOutput(command)
-
 
         this.handleCpError(command, this.running)
 
@@ -129,11 +127,19 @@ import Console from './Console'
       stopMachine(machineName) {
         this.running = true
         const machine = new Machine(machineName)
-        machine.stop(err => {
-          if (err) {
-            this.setError(err)
-            return false
+        const command = cp.spawn('docker-machine', ['stop', machineName])
+
+        this.handleCpOutput(command)
+        this.handleCpError(command, this.running)
+
+        command.on('exit', code => {
+          if (code !== 0) {
+            this.setError('Something went wrong stopping the machine')
+            this.running = false
+            this.output = null
+            process.exit(1)
           }
+
           machine.isRunning((err, running) => {
             if (err) {
               this.setError(err)
@@ -143,21 +149,22 @@ import Console from './Console'
               this.updateMachineIp({ ip: '', machineName })
               this.updateMachineState({ machineState: 'stopped', machineName })
               this.running = false
+              setTimeout(this.clearOutput, 2000)
               return true
             }
           })
         })
+
+
       },
       regenerateCerts(machineName) {
         this.regeneratingCerts = true
         const command = cp.spawn('docker-machine', ['regenerate-certs', machineName])
 
-        command.stdout.setEncoding('utf8')
-
         this.handleCpOutput(command)
 
         this.handleCpError(command, this.regeneratingCerts)
-        
+
         command.on('exit', code => {
           if (code !== 0) {
             this.setError('Something went wrong regenerating certs')
@@ -171,6 +178,8 @@ import Console from './Console'
         })
       },
       handleCpOutput(cp) {
+        cp.stdout.setEncoding('utf8')
+
         cp.stdout.on('data', data => {
           if (this.output) {
             this.output = this.output.replace('null', '')
@@ -185,7 +194,7 @@ import Console from './Console'
         cp.stdout.on('error', err => {
           this.setError(err)
           loadingAttribute = false
-          this.output = null
+          this.clearOutput()
         })
       },
       clearOutput() {
