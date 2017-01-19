@@ -78,37 +78,60 @@ import Console from './Console'
       startMachine(machineName) {
         this.running = true
         const machine = new Machine(machineName)
-        machine.start(err => {
-          if (err) {
-            this.setError(err)
+        const command = cp.spawn('docker-machine', ['start', machineName])
+        command.stdout.setEncoding('utf8')
 
+        command.stdout.on('data', data => {
+          if (this.output) {
+            this.output = this.output.replace('null', '')
           }
+          this.output += '> ' + data.replace('\n', '<br/>')
+        })
+
+        command.stdout.on('error', err => {
+          this.setError(err)
+          this.running = false
+          this.output = null
+        })
+
+        command.on('exit', code => {
+          if (code !== 0) {
+            this.setError('Something went wrong starting the machine')
+            this.running = false
+            this.output = null
+            process.exit(1)
+          }
+
+          this.output += 'done!'
+          setTimeout(this.clearOutput, 2000)
+          this.fetchMachines()
+
           machine.isRunning((err, running) => {
             if (err) {
               this.setError(err)
-
+              console.log(err);
             }
             if (running) {
-              machine.env({ parse: true }, (err, result) => {
+              cp.exec(`docker-machine ip ${machineName}`, (err, stdout) => {
                 if (err) {
                   this.setError(err)
-
+                  this.running = false
+                  this.output = null
                 }
-                const ip = result.DOCKER_HOST.replace('tcp://', '').split(':')[0]
                 const oldIp = localStorage.getItem(machineName)
-
-                localStorage.setItem(machineName, ip)
-                this.updateMachineIp({ ip, machineName })
+                localStorage.setItem(machineName, stdout)
+                this.updateMachineIp({ ip: stdout, machineName })
                 this.updateMachineState({ machineState: 'running', machineName })
                 this.running = false
-                if (oldIp && ip !== oldIp) {
+
+                if (oldIp && stdout !== oldIp) {
                   this.regenerateCerts(machineName)
                 }
                 return true
               })
-
             }
           })
+          this.running = false
         })
       },
       stopMachine(machineName) {
@@ -156,10 +179,10 @@ import Console from './Console'
             this.regeneratingCerts = false
             process.exit(1)
           }
-          this.fetchMachines()
           this.output += 'done!'
           setTimeout(this.clearOutput, 2000)
           this.regeneratingCerts = false
+          this.fetchMachines()
         })
       },
       clearOutput() {
